@@ -1,0 +1,37 @@
+library(httr)
+library(jsonlite)
+library(ggplot2)
+library(lubridate)
+library(viridis)
+
+# Set the API endpoint and query parameters
+endpoint <- "https://data.cityofnewyork.us/resource/erm2-nwe9.json"
+query_params <- list(
+  "$where" = "complaint_type='Stolen Vehicle'",
+  "$select" = "created_date, latitude, longitude"
+)
+
+# Make the API request
+response <- GET(url = endpoint, query = query_params)
+
+# Convert the response to a JSON object
+data <- fromJSON(content(response, "text"), simplifyDataFrame = TRUE)
+
+# Convert the created_date column to a date object
+data$created_date <- ymd_hms(data$created_date)
+
+# Create a year-month column
+data$year_month <- format(data$created_date, "%Y-%m")
+
+# Filter the data to only include dates from 2019 to 2021
+data <- subset(data, created_date >= ymd("2019-01-01") & created_date < ymd("2022-01-01"))
+
+# Create a heatmap
+ggplot(data, aes(x = longitude, y = latitude)) +
+  geom_density2d(aes(fill = ..density..), alpha = 0.8) +
+  scale_fill_viridis() +
+  facet_wrap(~year_month, nrow = 3) +
+  labs(title = "Car Theft Density Heatmap from 2019 to 2021",
+       x = "Longitude",
+       y = "Latitude")
+
